@@ -1,4 +1,5 @@
 export type ShiftType = 'day' | 'night' | 'morning';
+export type DayStatus = ShiftType | 'vacation' | 'sick' | 'free';
 
 export interface Employee {
   id: string;
