@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ShiftBadge } from '@/components/dashboard/ShiftBadge';
+import { ScheduleCell } from '@/components/schedule/ScheduleCell';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
   ChevronLeft, 
@@ -12,7 +12,7 @@ import {
   Filter
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ShiftType } from '@/types/schedule';
+import { DayStatus } from '@/types/schedule';
 
 // Mock data for the monthly schedule
 const employees = [
@@ -23,25 +23,44 @@ const employees = [
   { id: '5', name: 'Luka Novak', initials: 'LN' },
 ];
 
-// Generate mock schedule data
+// Generate realistic schedule with D D N pattern + 3 days free
 const generateSchedule = () => {
-  const schedule: Record<string, Record<number, ShiftType | null>> = {};
+  const schedule: Record<string, Record<number, DayStatus | null>> = {};
   
-  employees.forEach((emp) => {
+  employees.forEach((emp, empIndex) => {
     schedule[emp.id] = {};
-    for (let day = 1; day <= 30; day++) {
-      const rand = Math.random();
-      if (rand < 0.3) {
-        schedule[emp.id][day] = 'day';
-      } else if (rand < 0.4) {
-        schedule[emp.id][day] = 'night';
-      } else if (rand < 0.5) {
-        schedule[emp.id][day] = 'morning';
+    // Offset each employee's cycle to distribute coverage
+    let cycleDay = (empIndex * 2) % 6;
+    
+    for (let day = 1; day <= 31; day++) {
+      const pattern = cycleDay % 6;
+      
+      if (pattern === 0) {
+        schedule[emp.id][day] = 'day'; // D
+      } else if (pattern === 1) {
+        schedule[emp.id][day] = 'day'; // D
+      } else if (pattern === 2) {
+        schedule[emp.id][day] = 'night'; // N
       } else {
-        schedule[emp.id][day] = null;
+        schedule[emp.id][day] = 'free'; // 3 days free
       }
+      cycleDay++;
     }
   });
+
+  // Add some vacation (GO) example - employee 2 on vacation
+  for (let day = 10; day <= 16; day++) {
+    if (day % 2 === 0) {
+      schedule['2'][day] = 'vacation';
+    } else {
+      schedule['2'][day] = 'free';
+    }
+  }
+
+  // Add sick leave example - employee 4
+  schedule['4'][5] = 'sick';
+  schedule['4'][6] = 'sick';
+  schedule['4'][7] = 'sick';
   
   return schedule;
 };
@@ -101,16 +120,24 @@ export default function Schedule() {
         {/* Legend */}
         <div className="flex flex-wrap gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <ShiftBadge type="day" size="sm" />
-            <span className="text-muted-foreground">07:30 - 19:30</span>
+            <ScheduleCell status="day" size="sm" />
+            <span className="text-muted-foreground">D - Dnevna (07:30-19:30)</span>
           </div>
           <div className="flex items-center gap-2">
-            <ShiftBadge type="night" size="sm" />
-            <span className="text-muted-foreground">19:30 - 07:30</span>
+            <ScheduleCell status="night" size="sm" />
+            <span className="text-muted-foreground">N - Noćna (19:30-07:30)</span>
           </div>
           <div className="flex items-center gap-2">
-            <ShiftBadge type="morning" size="sm" />
-            <span className="text-muted-foreground">07:30 - 15:30</span>
+            <ScheduleCell status="morning" size="sm" />
+            <span className="text-muted-foreground">J - Jutarnja (07:30-15:30)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <ScheduleCell status="vacation" size="sm" />
+            <span className="text-muted-foreground">GO - Godišnji odmor</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <ScheduleCell status="sick" size="sm" />
+            <span className="text-muted-foreground">B - Bolovanje</span>
           </div>
         </div>
 
@@ -182,11 +209,7 @@ export default function Schedule() {
                               isWeekend && 'bg-warning/5'
                             )}
                           >
-                            {shift ? (
-                              <ShiftBadge type={shift} showLabel={false} size="sm" />
-                            ) : (
-                              <span className="text-xs text-muted-foreground">-</span>
-                            )}
+                            <ScheduleCell status={shift} isWeekend={isWeekend} />
                           </td>
                         );
                       })}
